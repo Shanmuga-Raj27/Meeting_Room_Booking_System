@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build and logs
+dist/
+build/
+out/
+logs/
+*.log
+
+# Environment variables
+.env
+.env*.local
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# AI Assistants & Agents
+.agents/
+!.agents/rules/
+.claude/
+claude/
+.windsurf/
+windsurf/
+.codeium/
+.cursor/
+.copilot/
