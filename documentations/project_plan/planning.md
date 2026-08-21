@@ -356,8 +356,8 @@ Before marking the project complete, the implementation must pass all checks:
 - [x] **Phase 1**: Environment initialized, PostgreSQL database models & composite indexes applied.
 - [x] **Phase 2**: `backend/app/` structure setup, schema-first `.graphql` files created, resolvers & services separated.
 - [x] **Phase 3**: Overlap logic implemented, PostgreSQL concurrency lock active, cancellation & self-excluding rescheduling verified.
-- [ ] **Phase 4**: Cursor-based pagination operational with base64 opaque tokens and `(startTime, id)` ordering.
-- [ ] **Phase 5**: `bun test` suite passing 100%, including concurrent race-condition tests (`concurrency.test.ts`).
+- [x] **Phase 4**: Cursor-based pagination operational with base64 opaque tokens and `(startTime, id)` ordering.
+- [x] **Phase 5**: `bun test` suite passing 100%, including concurrent race-condition tests (`concurrency.test.ts`).
 - [ ] **Phase 6**: Custom GraphQL errors formatted, `phase-2.md` and `README.md` updated.
 - [ ] **Phase 7**: React frontend application fully interactive and integrated with backend API.
 - [ ] **Phase 8**: Cloud database and server instances deployed and verified live.
