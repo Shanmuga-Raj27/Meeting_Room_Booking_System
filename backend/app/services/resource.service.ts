@@ -5,6 +5,12 @@ export class ResourceService {
     if (capacity <= 0) {
       throw new Error("Capacity must be greater than zero");
     }
+    const existing = await prisma.resource.findUnique({
+      where: { name },
+    });
+    if (existing) {
+      throw new Error("RESOURCE_ALREADY_EXISTS");
+    }
     return prisma.resource.create({
       data: {
         name,

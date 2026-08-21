@@ -35,4 +35,14 @@ export const ERROR_MAP: Record<string, ErrorDetail> = {
     code: "CONCURRENCY_CONFLICT",
     status: 409,
   },
+  INVALID_CURSOR: {
+    message: "The provided pagination cursor is invalid or malformed.",
+    code: "INVALID_CURSOR",
+    status: 400,
+  },
+  RESOURCE_ALREADY_EXISTS: {
+    message: "A meeting room or resource with this name already exists.",
+    code: "RESOURCE_ALREADY_EXISTS",
+    status: 409,
+  },
 };

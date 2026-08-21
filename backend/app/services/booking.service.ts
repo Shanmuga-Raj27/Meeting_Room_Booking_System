@@ -21,6 +21,13 @@ export class BookingService {
     }
   }
 
+  private static validateUuid(id: string, errorName: "RESOURCE_NOT_FOUND" | "BOOKING_NOT_FOUND"): void {
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!id || !UUID_REGEX.test(id)) {
+      throw new Error(errorName);
+    }
+  }
+
   private static encodeCursor(startTime: Date, id: string): string {
     const payload = JSON.stringify({ startTime: startTime.toISOString(), id });
     return Buffer.from(payload).toString("base64");
@@ -28,8 +35,25 @@ export class BookingService {
 
   private static decodeCursor(cursor: string): { startTime: string; id: string } {
     try {
+      if (!cursor || typeof cursor !== "string") {
+        throw new Error("INVALID_CURSOR");
+      }
       const decoded = Buffer.from(cursor, "base64").toString("utf-8");
-      return JSON.parse(decoded);
+      const parsed = JSON.parse(decoded);
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        typeof parsed.startTime !== "string" ||
+        typeof parsed.id !== "string" ||
+        !parsed.id
+      ) {
+        throw new Error("INVALID_CURSOR");
+      }
+      const date = new Date(parsed.startTime);
+      if (isNaN(date.getTime())) {
+        throw new Error("INVALID_CURSOR");
+      }
+      return { startTime: parsed.startTime, id: parsed.id };
     } catch (err) {
       throw new Error("INVALID_CURSOR");
     }
@@ -66,6 +90,7 @@ export class BookingService {
     endTime: Date,
     resourceId: string
   ) {
+    this.validateUuid(resourceId, "RESOURCE_NOT_FOUND");
     this.validateTimeRange(startTime, endTime);
 
     // Run within interactive transaction with Resource-level row locking
@@ -104,6 +129,7 @@ export class BookingService {
   }
 
   static async rescheduleBooking(id: string, startTime: Date, endTime: Date) {
+    this.validateUuid(id, "BOOKING_NOT_FOUND");
     this.validateTimeRange(startTime, endTime);
 
     return prisma.$transaction(
@@ -156,6 +182,7 @@ export class BookingService {
   }
 
   static async cancelBooking(id: string) {
+    this.validateUuid(id, "BOOKING_NOT_FOUND");
     const booking = await prisma.booking.findUnique({
       where: { id },
     });
@@ -177,6 +204,7 @@ export class BookingService {
   }
 
   static async deleteBooking(id: string) {
+    this.validateUuid(id, "BOOKING_NOT_FOUND");
     const booking = await prisma.booking.findUnique({
       where: { id },
     });
@@ -195,6 +223,7 @@ export class BookingService {
     startTime: Date,
     endTime: Date
   ) {
+    this.validateUuid(resourceId, "RESOURCE_NOT_FOUND");
     this.validateTimeRange(startTime, endTime);
 
     const resource = await prisma.resource.findUnique({
@@ -221,6 +250,9 @@ export class BookingService {
   }
 
   static async getBookings(args: PaginationArgs) {
+    if (args.resourceId) {
+      this.validateUuid(args.resourceId, "RESOURCE_NOT_FOUND");
+    }
     const limit = args.first && args.first > 0 ? args.first : 20;
     const whereClause: Prisma.BookingWhereInput = {};
 
