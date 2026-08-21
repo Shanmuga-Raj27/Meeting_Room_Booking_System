@@ -457,4 +457,73 @@ Room Booking API Server is running at http://localhost:4000/graphql
 - [x] Half-open interval collision validation `[startTime, endTime)` enforced.
 - [x] Resource-level PostgreSQL row locking (`SELECT ... FOR UPDATE`) implemented for concurrency safety.
 - [x] Keyset cursor pagination operational with Base64 tokens.
+- [x] Standardized custom error taxonomy & GraphQL Yoga error masking integrated.
 - [x] Server running and verified on `http://localhost:4000/graphql`.
+
+---
+
+## 8. Standardized Custom Error System & Robustness
+
+To ensure uniform client error responses across all GraphQL mutations and queries, custom application errors are centrally mapped in `backend/app/graphql/errors.ts` and masked by GraphQL Yoga middleware in `backend/app/index.ts`.
+
+### 8.1 Custom Error Hierarchy Taxonomy
+
+| Error Code | HTTP Status | Description / Client Message | Trigger Condition |
+| :--- | :--- | :--- | :--- |
+| `RESOURCE_NOT_FOUND` | 404 | "The requested meeting room or resource could not be found." | Resource ID does not exist or invalid UUID format |
+| `BOOKING_NOT_FOUND` | 404 | "The requested booking could not be found." | Booking ID does not exist or invalid UUID format |
+| `INVALID_TIME_RANGE` | 400 | "The start time of the booking must be earlier than the end time, and both dates must be valid." | `startTime >= endTime` or invalid date string |
+| `RESOURCE_UNAVAILABLE` | 409 | "This meeting room is already reserved during the requested time slot. Please choose another time." | Requested window overlaps with an existing `CONFIRMED` booking |
+| `BOOKING_ALREADY_CANCELLED` | 400 | "This booking has already been cancelled." | Attempting to cancel an already `CANCELLED` booking |
+| `CONCURRENCY_CONFLICT` | 409 | "Another booking request is being processed for this room at the same time. Please try again." | Transaction lock timeout or serialization conflict |
+| `INVALID_CURSOR` | 400 | "The provided pagination cursor is invalid or malformed." | Corrupted or malformed base64 pagination cursor |
+| `RESOURCE_ALREADY_EXISTS` | 409 | "A meeting room or resource with this name already exists." | Attempting to create a resource with duplicate name |
+
+### 8.2 GraphQL Yoga Error Masking Integration (`app/index.ts`)
+
+```typescript
+export const yoga = createYoga({
+  schema,
+  graphqlEndpoint: "/graphql",
+  landingPage: true,
+  maskedErrors: {
+    maskError(error: any, message: string, isDev?: boolean) {
+      const originalError = error.originalError || error;
+      const errorKey = originalError?.message;
+
+      if (errorKey && ERROR_MAP[errorKey]) {
+        const mapped = ERROR_MAP[errorKey];
+        return createGraphQLError(mapped.message, {
+          extensions: {
+            code: mapped.code,
+            http: { status: mapped.status },
+          },
+        });
+      }
+
+      if (
+        originalError?.code === "P2028" ||
+        (typeof originalError?.message === "string" &&
+          (originalError.message.includes("Transaction timed out") ||
+            originalError.message.includes("lock timeout")))
+      ) {
+        const mapped = ERROR_MAP.CONCURRENCY_CONFLICT;
+        return createGraphQLError(mapped.message, {
+          extensions: {
+            code: mapped.code,
+            http: { status: mapped.status },
+          },
+        });
+      }
+
+      return createGraphQLError("An unexpected error occurred. Please try again later.", {
+        extensions: {
+          code: "INTERNAL_SERVER_ERROR",
+          http: { status: 500 },
+        },
+      });
+    },
+  },
+});
+```
+

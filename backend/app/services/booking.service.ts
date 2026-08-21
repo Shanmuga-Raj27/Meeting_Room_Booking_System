@@ -93,92 +93,111 @@ export class BookingService {
     this.validateUuid(resourceId, "RESOURCE_NOT_FOUND");
     this.validateTimeRange(startTime, endTime);
 
-    // Run within interactive transaction with Resource-level row locking
-    return prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        // Lock the parent resource row to serialize bookings on it
-        const resources = await tx.$queryRaw<Array<{ id: string }>>`
-          SELECT "id" FROM "Resource" WHERE "id" = ${resourceId} FOR UPDATE
-        `;
+    try {
+      return await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // Lock the parent resource row to serialize bookings on it
+          const resources = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT "id" FROM "Resource" WHERE "id" = ${resourceId} FOR UPDATE
+          `;
 
-        if (!resources || resources.length === 0) {
-          throw new Error("RESOURCE_NOT_FOUND");
+          if (!resources || resources.length === 0) {
+            throw new Error("RESOURCE_NOT_FOUND");
+          }
+
+          // Evaluate overlap
+          const hasOverlap = await this.checkOverlap(tx, resourceId, startTime, endTime);
+          if (hasOverlap) {
+            throw new Error("RESOURCE_UNAVAILABLE");
+          }
+
+          // Insert new booking
+          return tx.booking.create({
+            data: {
+              title,
+              startTime,
+              endTime,
+              status: BookingStatus.CONFIRMED,
+              resourceId,
+            },
+          });
+        },
+        {
+          timeout: 10000,
         }
-
-        // Evaluate overlap
-        const hasOverlap = await this.checkOverlap(tx, resourceId, startTime, endTime);
-        if (hasOverlap) {
-          throw new Error("RESOURCE_UNAVAILABLE");
-        }
-
-        // Insert new booking
-        return tx.booking.create({
-          data: {
-            title,
-            startTime,
-            endTime,
-            status: BookingStatus.CONFIRMED,
-            resourceId,
-          },
-        });
-      },
-      {
-        timeout: 10000,
+      );
+    } catch (err: any) {
+      if (
+        err?.code === "P2028" ||
+        (typeof err?.message === "string" && err.message.includes("Transaction timed out"))
+      ) {
+        throw new Error("CONCURRENCY_CONFLICT");
       }
-    );
+      throw err;
+    }
   }
 
   static async rescheduleBooking(id: string, startTime: Date, endTime: Date) {
     this.validateUuid(id, "BOOKING_NOT_FOUND");
     this.validateTimeRange(startTime, endTime);
 
-    return prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        const existingBooking = await tx.booking.findUnique({
-          where: { id },
-        });
+    try {
+      return await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const existingBooking = await tx.booking.findUnique({
+            where: { id },
+          });
 
-        if (!existingBooking) {
-          throw new Error("BOOKING_NOT_FOUND");
-        }
+          if (!existingBooking) {
+            throw new Error("BOOKING_NOT_FOUND");
+          }
 
-        const resourceId = existingBooking.resourceId;
+          const resourceId = existingBooking.resourceId;
 
-        // Lock the resource row to serialize concurrent writes
-        const resources = await tx.$queryRaw<Array<{ id: string }>>`
-          SELECT "id" FROM "Resource" WHERE "id" = ${resourceId} FOR UPDATE
-        `;
+          // Lock the resource row to serialize concurrent writes
+          const resources = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT "id" FROM "Resource" WHERE "id" = ${resourceId} FOR UPDATE
+          `;
 
-        if (!resources || resources.length === 0) {
-          throw new Error("RESOURCE_NOT_FOUND");
-        }
+          if (!resources || resources.length === 0) {
+            throw new Error("RESOURCE_NOT_FOUND");
+          }
 
-        // Evaluate overlap excluding self
-        const hasOverlap = await this.checkOverlap(
-          tx,
-          resourceId,
-          startTime,
-          endTime,
-          id
-        );
-        if (hasOverlap) {
-          throw new Error("RESOURCE_UNAVAILABLE");
-        }
-
-        // Update booking times and force CONFIRMED status
-        return tx.booking.update({
-          where: { id },
-          data: {
+          // Evaluate overlap excluding self
+          const hasOverlap = await this.checkOverlap(
+            tx,
+            resourceId,
             startTime,
             endTime,
-            status: BookingStatus.CONFIRMED,
-          },
-        });
-      },
-      {
-        timeout: 10000,
+            id
+          );
+          if (hasOverlap) {
+            throw new Error("RESOURCE_UNAVAILABLE");
+          }
+
+          // Update booking times and force CONFIRMED status
+          return tx.booking.update({
+            where: { id },
+            data: {
+              startTime,
+              endTime,
+              status: BookingStatus.CONFIRMED,
+            },
+          });
+        },
+        {
+          timeout: 10000,
+        }
+      );
+    } catch (err: any) {
+      if (
+        err?.code === "P2028" ||
+        (typeof err?.message === "string" && err.message.includes("Transaction timed out"))
+      ) {
+        throw new Error("CONCURRENCY_CONFLICT");
       }
-    );
+      throw err;
+    }
   }
 
   static async cancelBooking(id: string) {

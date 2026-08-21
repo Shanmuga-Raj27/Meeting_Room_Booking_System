@@ -87,7 +87,7 @@ Convenient wrapper scripts are defined to run development tools:
 ### Environment Variable Structure
 Prisma accesses database configuration through the `DATABASE_URL` environment variable inside [backend/.env](file:///d:/Meeting_Room_Booking_System/backend/.env):
 ```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/room_booking_db?schema=public"
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/your_db?schema=public"
 ```
 
 ### Prisma 7 Configuration Strategy

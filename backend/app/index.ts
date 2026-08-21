@@ -39,6 +39,23 @@ export const yoga = createYoga({
         });
       }
 
+      if (
+        originalError?.code === "P2028" ||
+        (typeof originalError?.message === "string" &&
+          (originalError.message.includes("Transaction timed out") ||
+            originalError.message.includes("lock timeout")))
+      ) {
+        const mapped = ERROR_MAP["CONCURRENCY_CONFLICT"];
+        if (mapped) {
+          return createGraphQLError(mapped.message, {
+            extensions: {
+              code: mapped.code,
+              http: { status: mapped.status },
+            },
+          });
+        }
+      }
+
       // Default user-friendly error for unhandled internal failures
       return createGraphQLError("An unexpected error occurred. Please try again later.", {
         extensions: {
