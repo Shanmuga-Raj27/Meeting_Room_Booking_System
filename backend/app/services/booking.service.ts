@@ -9,6 +9,18 @@ export interface PaginationArgs {
 }
 
 export class BookingService {
+  private static validateTimeRange(startTime: Date, endTime: Date): void {
+    if (
+      !(startTime instanceof Date) ||
+      !(endTime instanceof Date) ||
+      isNaN(startTime.getTime()) ||
+      isNaN(endTime.getTime()) ||
+      startTime.getTime() >= endTime.getTime()
+    ) {
+      throw new Error("INVALID_TIME_RANGE");
+    }
+  }
+
   private static encodeCursor(startTime: Date, id: string): string {
     const payload = JSON.stringify({ startTime: startTime.toISOString(), id });
     return Buffer.from(payload).toString("base64");
@@ -30,7 +42,7 @@ export class BookingService {
     endTime: Date,
     excludeBookingId?: string
   ): Promise<boolean> {
-    const conditions: any = {
+    const conditions: Prisma.BookingWhereInput = {
       resourceId,
       status: BookingStatus.CONFIRMED,
       startTime: { lt: endTime },
@@ -54,9 +66,7 @@ export class BookingService {
     endTime: Date,
     resourceId: string
   ) {
-    if (startTime.getTime() >= endTime.getTime()) {
-      throw new Error("INVALID_TIME_RANGE");
-    }
+    this.validateTimeRange(startTime, endTime);
 
     // Run within interactive transaction with Resource-level row locking
     return prisma.$transaction(
@@ -94,22 +104,20 @@ export class BookingService {
   }
 
   static async rescheduleBooking(id: string, startTime: Date, endTime: Date) {
-    if (startTime.getTime() >= endTime.getTime()) {
-      throw new Error("INVALID_TIME_RANGE");
-    }
-
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id },
-    });
-
-    if (!existingBooking) {
-      throw new Error("BOOKING_NOT_FOUND");
-    }
-
-    const resourceId = existingBooking.resourceId;
+    this.validateTimeRange(startTime, endTime);
 
     return prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
+        const existingBooking = await tx.booking.findUnique({
+          where: { id },
+        });
+
+        if (!existingBooking) {
+          throw new Error("BOOKING_NOT_FOUND");
+        }
+
+        const resourceId = existingBooking.resourceId;
+
         // Lock the resource row to serialize concurrent writes
         const resources = await tx.$queryRaw<Array<{ id: string }>>`
           SELECT "id" FROM "Resource" WHERE "id" = ${resourceId} FOR UPDATE
@@ -187,9 +195,7 @@ export class BookingService {
     startTime: Date,
     endTime: Date
   ) {
-    if (startTime.getTime() >= endTime.getTime()) {
-      throw new Error("INVALID_TIME_RANGE");
-    }
+    this.validateTimeRange(startTime, endTime);
 
     const resource = await prisma.resource.findUnique({
       where: { id: resourceId },
@@ -216,7 +222,7 @@ export class BookingService {
 
   static async getBookings(args: PaginationArgs) {
     const limit = args.first && args.first > 0 ? args.first : 20;
-    const whereClause: any = {};
+    const whereClause: Prisma.BookingWhereInput = {};
 
     if (args.resourceId) {
       whereClause.resourceId = args.resourceId;
@@ -277,3 +283,4 @@ export class BookingService {
     };
   }
 }
+
