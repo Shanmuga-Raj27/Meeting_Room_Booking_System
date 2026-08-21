@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Minimal global styles */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f9fafb;
+}
