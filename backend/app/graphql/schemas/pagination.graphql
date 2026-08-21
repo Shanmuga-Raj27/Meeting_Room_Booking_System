@@ -1,0 +1,15 @@
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type BookingEdge {
+  cursor: String!
+  node: Booking!
+}
+
+type BookingConnection {
+  edges: [BookingEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}

@@ -1,0 +1,18 @@
+scalar DateTime
+
+type Resource {
+  id: ID!
+  name: String!
+  capacity: Int!
+  createdAt: DateTime!
+  bookings: [Booking!]!
+}
+
+type Query {
+  resources: [Resource!]!
+  resource(id: ID!): Resource
+}
+
+type Mutation {
+  createResource(name: String!, capacity: Int!): Resource!
+}

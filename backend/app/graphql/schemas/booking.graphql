@@ -1,0 +1,35 @@
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+type Booking {
+  id: ID!
+  title: String!
+  startTime: DateTime!
+  endTime: DateTime!
+  status: BookingStatus!
+  resourceId: String!
+  resource: Resource!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type AvailabilityResult {
+  available: Boolean!
+  resourceId: ID!
+  startTime: DateTime!
+  endTime: DateTime!
+}
+
+extend type Query {
+  bookings(resourceId: String, status: BookingStatus, first: Int, after: String): BookingConnection!
+  availability(resourceId: ID!, startTime: DateTime!, endTime: DateTime!): AvailabilityResult!
+}
+
+extend type Mutation {
+  createBooking(title: String!, startTime: DateTime!, endTime: DateTime!, resourceId: ID!): Booking!
+  rescheduleBooking(id: ID!, startTime: DateTime!, endTime: DateTime!): Booking!
+  cancelBooking(id: ID!): Booking!
+  deleteBooking(id: ID!): Booking!
+}
