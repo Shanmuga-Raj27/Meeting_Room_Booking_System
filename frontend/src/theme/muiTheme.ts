@@ -4,15 +4,22 @@ export const muiTheme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#4f46e5", // Indigo
+      main: "#000000",
+      contrastText: "#FFFFFF",
     },
     secondary: {
-      main: "#10b981", // Emerald
+      main: "#1A1A1A",
+      contrastText: "#FFFFFF",
     },
     background: {
-      default: "#f9fafb",
-      paper: "#ffffff",
+      default: "#F9F9F9",
+      paper: "#FFFFFF",
     },
+    text: {
+      primary: "#000000",
+      secondary: "#4A4A4A",
+    },
+    divider: "#E0E0E0",
   },
   typography: {
     fontFamily: [
@@ -25,14 +32,68 @@ export const muiTheme = createTheme({
       "Arial",
       "sans-serif",
     ].join(","),
-    h1: {
-      fontWeight: 700,
+    h1: { fontWeight: 700 },
+    h2: { fontWeight: 600 },
+    h3: { fontWeight: 600 },
+    h4: { fontWeight: 600 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
+    button: { textTransform: "none", fontWeight: 600 },
+  },
+  shape: {
+    borderRadius: 4, // Sharp, slightly rounded borders
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          border: "1px solid #000000",
+          boxShadow: "none",
+          "&:hover": {
+            boxShadow: "none",
+          },
+        },
+      },
     },
-    h2: {
-      fontWeight: 600,
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          border: "1px solid #E0E0E0",
+          boxShadow: "none", // Avoid heavy card shadows
+        },
+      },
     },
-    h3: {
-      fontWeight: 600,
+    MuiPaper: {
+      styleOverrides: {
+        elevation1: {
+          boxShadow: "none",
+          border: "1px solid #E0E0E0",
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          border: "1px solid #000000",
+          boxShadow: "0px 10px 30px rgba(0,0,0,0.1)", // Slight shadow for depth only on modals
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#E0E0E0",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#000000",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#000000",
+            borderWidth: "1px",
+          },
+        },
+      },
     },
   },
 });
